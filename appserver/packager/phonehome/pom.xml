@@ -40,24 +40,24 @@
     holder.
 
 -->
-<!-- Portions Copyright [2014] [C2B2 Consulting Limited and/or its affiliates] -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<!-- Portions Copyright [2016] [C2B2 Consulting Limited and/or its affiliates] -->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>org.glassfish.main.packager</groupId>
         <artifactId>packages</artifactId>
         <version>4.1.1.162-SNAPSHOT</version>
     </parent>
-    <groupId>org.glassfish.main.packager</groupId>
-    <artifactId>hazelcast</artifactId>
-    <name>Hazelcast Package</name>
+    <!--<groupId>org.glassfish.main.packager</groupId>-->
+    <artifactId>phonehome</artifactId>
+    <name>Phone Home Package</name>
     <packaging>distribution-fragment</packaging>
-    <description>This pom describes how to assemble the Hazelcast package</description>
+    <description>This pom describes how to assemble the PhoneHome package</description>
     
     <properties>
         <temp.dir>${project.build.directory}/dependency</temp.dir>       
     </properties>    
-
+    
     <build>
         <plugins>
             <plugin>
@@ -128,26 +128,10 @@
     <dependencies>
         <dependency>
            <groupId>fish.payara.packager</groupId>
-           <artifactId>hazelcast-package</artifactId>
+           <artifactId>phonehome-package</artifactId>
            <version>${project.version}</version>
            <type>zip</type>
            <optional>true</optional>
-       </dependency> 
-        <dependency>
-            <groupId>fish.payara.admingui</groupId>
-            <artifactId>payara-console-extras</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>fish.payara.appserver</groupId>
-            <artifactId>payara-jsr107</artifactId>
-            <version>${project.version}</version>
-        </dependency>     
-        <dependency>
-            <groupId>fish.payara.appserver</groupId>
-            <artifactId>jsr107-repackaged</artifactId>
-            <version>${project.version}</version>
-        </dependency>
+       </dependency>
     </dependencies>
 </project>
-
