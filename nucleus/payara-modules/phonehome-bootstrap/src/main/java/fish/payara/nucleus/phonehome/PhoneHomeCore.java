@@ -19,6 +19,11 @@
  */
 package fish.payara.nucleus.phonehome;
 
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.inject.Inject;
@@ -28,8 +33,6 @@ import org.glassfish.api.admin.ServerEnvironment;
 import org.glassfish.api.event.EventListener;
 import org.glassfish.api.event.EventTypes;
 import org.glassfish.api.event.Events;
-//import org.glassfish.hk2.api.PostConstruct;
-//import org.glassfish.hk2.api.PreDestroy;
 import org.glassfish.hk2.runlevel.RunLevel;
 import org.jvnet.hk2.annotations.Service;
 
@@ -40,18 +43,21 @@ import org.jvnet.hk2.annotations.Service;
 @Service(name = "phonehome-core")
 @RunLevel(StartupRunLevel.VAL)
 public class PhoneHomeCore implements EventListener {
-//public class PhoneHomeCore implements EventListener, PostConstruct, PreDestroy {
     
-    //private static final Logger LOGGER = Logger.getLogger(PhoneHomeCore.class.getCanonicalName());
-    //private static final String PREFIX = "phonehome-core-";
+    private static final Logger LOGGER = Logger.getLogger(PhoneHomeCore.class.getCanonicalName());
+    private static final String THREAD_NAME = "PhoneHomeThread";
     
-    @Inject
-    private Events events;
+    private static PhoneHomeCore theCore;
+    private boolean enabled;
+    
+    private ScheduledExecutorService executor;
     
     @Inject
     @Named(ServerEnvironment.DEFAULT_INSTANCE_NAME)
+    PhoneHomeRuntimeConfiguration configuration;
     
-    //private ScheduledExecutorService executor;
+    @Inject
+    private Events events;
     
     /**
      *
@@ -60,28 +66,77 @@ public class PhoneHomeCore implements EventListener {
     @Override
     public void event(Event event) {
         if (event.is(EventTypes.SERVER_STARTUP)) {
-            //System.out.println("PhoneHomeCore SERVER_STARTUP");
+            bootstrapPhoneHome();
+            System.out.println("PhoneHomeCore SERVER_STARTUP");
         } else if (event.is(EventTypes.SERVER_SHUTDOWN)) {
-            //System.out.println("PhoneHome SERVER_SHUTDOWN");
+            executor.shutdownNow();
+            System.out.println("PhoneHome SERVER_SHUTDOWN");
         }
     }
     
-    //@Override
     @PostConstruct
     public void postConstruct() {
-        //bootstrapPhoneHome();
-        //events.register(this);
-        //System.out.println("PhoneHomeCore PostConstruct");
+        System.out.println("PhoneHomeCore PostConstruct");
+        theCore = this;
+        
+        if (configuration == null) {
+            enabled = true;
+        } else {
+            enabled = Boolean.valueOf(configuration.getEnabled());
+        }
     }
     
-    //@Override
     @PreDestroy
     public void preDestroy() {
-        //System.out.println("PhoneHomeCore PreDestroy");
+        System.out.println("PhoneHomeCore PreDestroy");
     }
     
-    public void bootstrapPhoneHome() {
-        //System.out.println("PhoneHomeCore bootstrapPhoneHome()");
+  
+    private void bootstrapPhoneHome() {
+        executor = Executors.newSingleThreadScheduledExecutor(new ThreadFactory() {
+            @Override
+            public Thread newThread(Runnable r) {
+                return new Thread(r, THREAD_NAME);
+            }
+        });
         events.register(this);
+        
+        if (enabled) {
+            executeTask();
+        }
+        
+        System.out.println("PhoneHomeCore bootstrapPhoneHome()");
+    }
+    
+    private void shutdownPhoneHome() {
+        if (executor != null) {
+            executor.shutdown();
+        }
+    }
+    
+    private void executeTask() {
+        //executor.scheduleAtFixedRate(new PhoneHomeTask(), 0, 1, TimeUnit.DAYS);
+        executor.scheduleAtFixedRate(new PhoneHomeTask(), 0, 2, TimeUnit.MINUTES);
+    }
+        
+    public void enable() {
+        System.out.println("PhoneHomeCore enable()");
+        setEnabled(true);
+    }
+    public void disable() {
+        System.out.println("PhoneHomeCore disable()");
+        setEnabled(false);
+    }
+    public void setEnabled(Boolean enabled) {
+        if (this.enabled && !enabled) {
+            this.enabled = false;
+            shutdownPhoneHome();
+        } else if (!this.enabled && enabled) {
+            this.enabled = true;
+            bootstrapPhoneHome();
+        } else if (this.enabled && enabled) {
+            shutdownPhoneHome();
+            bootstrapPhoneHome();
+        }
     }
 }
