@@ -44,7 +44,6 @@ import org.jvnet.hk2.annotations.Service;
 @RunLevel(StartupRunLevel.VAL)
 public class PhoneHomeCore implements EventListener {
     
-    private static final Logger LOGGER = Logger.getLogger(PhoneHomeCore.class.getCanonicalName());
     private static final String THREAD_NAME = "PhoneHomeThread";
     
     private static PhoneHomeCore theCore;
@@ -59,6 +58,18 @@ public class PhoneHomeCore implements EventListener {
     @Inject
     private Events events;
     
+    @PostConstruct
+    public void postConstruct() {
+        theCore = this;
+        events.register(this);
+              
+        if (configuration == null) {
+            enabled = true;
+        } else {
+            enabled = Boolean.valueOf(configuration.getEnabled());
+        }
+    }
+    
     /**
      *
      * @param event
@@ -67,76 +78,53 @@ public class PhoneHomeCore implements EventListener {
     public void event(Event event) {
         if (event.is(EventTypes.SERVER_STARTUP)) {
             bootstrapPhoneHome();
-            System.out.println("PhoneHomeCore SERVER_STARTUP");
         } else if (event.is(EventTypes.SERVER_SHUTDOWN)) {
-            executor.shutdownNow();
-            System.out.println("PhoneHome SERVER_SHUTDOWN");
+            shutdownPhoneHome();
         }
     }
     
-    @PostConstruct
-    public void postConstruct() {
-        System.out.println("PhoneHomeCore PostConstruct");
-        theCore = this;
-        
-        if (configuration == null) {
-            enabled = true;
-        } else {
-            enabled = Boolean.valueOf(configuration.getEnabled());
-        }
-    }
-    
-    @PreDestroy
-    public void preDestroy() {
-        System.out.println("PhoneHomeCore PreDestroy");
-    }
-    
-  
     private void bootstrapPhoneHome() {
-        executor = Executors.newSingleThreadScheduledExecutor(new ThreadFactory() {
-            @Override
-            public Thread newThread(Runnable r) {
-                return new Thread(r, THREAD_NAME);
-            }
-        });
-        events.register(this);
-        
         if (enabled) {
-            executeTask();
+            executor = Executors.newSingleThreadScheduledExecutor(new ThreadFactory() {
+                @Override
+                public Thread newThread(Runnable r) {
+                    return new Thread(r, THREAD_NAME);
+                }
+            });
+            //executor.scheduleAtFixedRate(new PhoneHomeTask(), 0, 1, TimeUnit.DAYS);
+            executor.scheduleAtFixedRate(new PhoneHomeTask(), 0, 5, TimeUnit.SECONDS);
         }
-        
-        System.out.println("PhoneHomeCore bootstrapPhoneHome()");
     }
     
     private void shutdownPhoneHome() {
         if (executor != null) {
-            executor.shutdown();
+            executor.shutdownNow();
         }
     }
     
-    private void executeTask() {
-        //executor.scheduleAtFixedRate(new PhoneHomeTask(), 0, 1, TimeUnit.DAYS);
-        executor.scheduleAtFixedRate(new PhoneHomeTask(), 0, 2, TimeUnit.MINUTES);
-    }
-        
-    public void enable() {
-        System.out.println("PhoneHomeCore enable()");
+    public void enable(){
         setEnabled(true);
     }
-    public void disable() {
-        System.out.println("PhoneHomeCore disable()");
+    public void disable(){
         setEnabled(false);
     }
     public void setEnabled(Boolean enabled) {
-        if (this.enabled && !enabled) {
-            this.enabled = false;
+        this.enabled = enabled;
+    }
+    
+    public void start() {
+        if (this.enabled) {
             shutdownPhoneHome();
-        } else if (!this.enabled && enabled) {
+            bootstrapPhoneHome();         
+        } else {
             this.enabled = true;
             bootstrapPhoneHome();
-        } else if (this.enabled && enabled) {
+        }
+    }
+    public void stop() {
+        if (this.enabled) {
+            this.enabled = false;
             shutdownPhoneHome();
-            bootstrapPhoneHome();
         }
     }
 }

@@ -19,6 +19,7 @@
  */
 package fish.payara.nucleus.phonehome.admin;
 
+import fish.payara.nucleus.phonehome.PhoneHomeCore;
 import fish.payara.nucleus.phonehome.PhoneHomeRuntimeConfiguration;
 import java.beans.PropertyVetoException;
 import javax.inject.Inject;
@@ -47,11 +48,14 @@ import org.jvnet.hk2.config.TransactionFailure;
 @CommandLock(CommandLock.LockType.NONE)
 @I18n("enable-phone-home")
 @ExecuteOn(RuntimeType.INSTANCE)
-@TargetType(value = {CommandTarget.DAS, CommandTarget.STANDALONE_INSTANCE, CommandTarget.CLUSTER})
+@TargetType(value = {CommandTarget.DAS})
 public class EnablePhoneHome implements AdminCommand {
     
     @Inject
     PhoneHomeRuntimeConfiguration configuration;
+    
+    @Inject
+    PhoneHomeCore service;
 
     @Override
     public void execute(AdminCommandContext context) {
@@ -72,9 +76,9 @@ public class EnablePhoneHome implements AdminCommand {
             report.setActionExitCode(ActionReport.ExitCode.FAILURE);
         }
         
+        service.start();
+        
         report.setMessage("Phone Home Service is enabled");
         report.setActionExitCode(ActionReport.ExitCode.SUCCESS);
-        
-        System.out.println("EnablePhoneHome execute() " + configuration.getEnabled());
     }
 }

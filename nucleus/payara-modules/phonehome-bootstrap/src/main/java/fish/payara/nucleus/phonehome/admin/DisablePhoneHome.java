@@ -19,6 +19,7 @@
  */
 package fish.payara.nucleus.phonehome.admin;
 
+import fish.payara.nucleus.phonehome.PhoneHomeCore;
 import fish.payara.nucleus.phonehome.PhoneHomeRuntimeConfiguration;
 import java.beans.PropertyVetoException;
 import javax.inject.Inject;
@@ -52,6 +53,9 @@ public class DisablePhoneHome implements AdminCommand {
     
     @Inject
     PhoneHomeRuntimeConfiguration configuration;
+    
+    @Inject
+    PhoneHomeCore service;
 
     @Override
     public void execute(AdminCommandContext context) {
@@ -72,9 +76,9 @@ public class DisablePhoneHome implements AdminCommand {
             report.setActionExitCode(ActionReport.ExitCode.FAILURE);
         }
         
+        service.stop();
+        
         report.setMessage("Phone Home Service is disabled");
         report.setActionExitCode(ActionReport.ExitCode.SUCCESS);
-        
-        System.out.println("DisablePhoneHome execute() " + configuration.getEnabled());
     }
 }

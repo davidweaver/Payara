@@ -853,11 +853,12 @@ public class PayaraMicro {
                 healthCheckService.setEnabled(enableHealthCheck);
             }
             
-            if (!disablePhoneHome) {
-                PhoneHomeCore phoneHomeCore = gf.getService(PhoneHomeCore.class);
-                phoneHomeCore.enable();
+            if (disablePhoneHome) {
+                logger.log(Level.INFO, "Phone Home Service Disabled");
+            } else {    
+                gf.getService(PhoneHomeCore.class).start();
             }
-
+            
             long end = System.currentTimeMillis();
             logger.info("Payara Micro ready in " + (end - start) + " (ms)");
 

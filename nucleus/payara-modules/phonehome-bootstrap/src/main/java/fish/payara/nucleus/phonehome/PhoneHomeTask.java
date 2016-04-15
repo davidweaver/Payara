@@ -31,6 +31,6 @@ public class PhoneHomeTask implements Runnable {
     
     @Override
     public void run() {
-        System.out.println("PhoneHomeTask Run()");
+        LOGGER.info("Phone Home");
     }
 }

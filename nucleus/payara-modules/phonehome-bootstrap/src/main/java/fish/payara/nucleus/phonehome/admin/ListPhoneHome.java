@@ -64,7 +64,5 @@ public class ListPhoneHome implements AdminCommand {
             report.setMessage("Phone Home Service is disabled");
         }
         report.setActionExitCode(ActionReport.ExitCode.SUCCESS);
-        
-        System.out.println("ListPhoneHome execute() " + configuration.getEnabled());
     }
 }
