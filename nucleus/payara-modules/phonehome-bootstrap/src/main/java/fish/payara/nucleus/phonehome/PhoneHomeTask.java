@@ -26,6 +26,7 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Logger;
 import javax.inject.Inject;
@@ -38,7 +39,8 @@ import org.glassfish.api.admin.ServerEnvironment;
  */
 public class PhoneHomeTask implements Runnable {
     
-    private static final String PHONE_HOME_URL = "https://phonehome.payara.fish/test";
+    //private static final String PHONE_HOME_URL = "https://phonehome.payara.fish/test";
+    private static final String PHONE_HOME_URL = "https://localhost:8181/echo/echo";
     private static final String USER_AGENT = "Mozilla/5.0";
     
     private static final Logger LOGGER = Logger.getLogger(PhoneHomeTask.class.getCanonicalName());
@@ -54,6 +56,13 @@ public class PhoneHomeTask implements Runnable {
         String javaVersion = getJavaVersion();
         String uptime = getUptime();
         
+        Map<String,String> params = new HashMap<>();
+        params.put("ver", version);
+        params.put("jvm", javaVersion);
+        params.put("uptime", uptime);
+        
+        String targetURL = PHONE_HOME_URL + encodeParams(params);
+        send(targetURL);
     }
     
     private String getVersion() {
@@ -77,22 +86,9 @@ public class PhoneHomeTask implements Runnable {
             totalTime_ms = System.currentTimeMillis() - start;
         }
         return Long.toString(totalTime_ms);
-        
     }
     
-    private void sendGet() {
-        
-        try { 
-            URL url = new URL(PHONE_HOME_URL);
-            HttpsURLConnection conn = (HttpsURLConnection) url.openConnection();
-            conn.setRequestMethod("GET");
-            conn.setRequestProperty("User-Agent", USER_AGENT);
-            conn.getResponseCode();
-        }
-        catch (IOException ioe) {}
-    }
-    
-    static String encodeParams(Map<String,String> params) {
+    private String encodeParams(Map<String,String> params) {
         
         StringBuilder sb = new StringBuilder();
         char seperator;
@@ -108,5 +104,19 @@ public class PhoneHomeTask implements Runnable {
             } catch (UnsupportedEncodingException uee) {}                     
         }
         return sb.toString();
+    }
+    
+    private void send(String target) {
+        
+        System.out.println("PhoneHomeTask send() target = " + target);
+        
+        try { 
+            URL url = new URL(target);
+            HttpsURLConnection conn = (HttpsURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setRequestProperty("User-Agent", USER_AGENT);
+            conn.getResponseCode();
+        }
+        catch (IOException ioe) {}
     }
 }
