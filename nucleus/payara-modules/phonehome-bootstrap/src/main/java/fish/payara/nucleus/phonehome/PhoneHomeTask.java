@@ -19,7 +19,18 @@
  */
 package fish.payara.nucleus.phonehome;
 
+import com.sun.appserv.server.util.Version;
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.lang.management.ManagementFactory;
+import java.lang.management.RuntimeMXBean;
+import java.net.URL;
+import java.net.URLEncoder;
+import java.util.Map;
 import java.util.logging.Logger;
+import javax.inject.Inject;
+import javax.net.ssl.HttpsURLConnection;
+import org.glassfish.api.admin.ServerEnvironment;
 
 /**
  *
@@ -27,10 +38,75 @@ import java.util.logging.Logger;
  */
 public class PhoneHomeTask implements Runnable {
     
+    private static final String PHONE_HOME_URL = "https://phonehome.payara.fish/test";
+    private static final String USER_AGENT = "Mozilla/5.0";
+    
     private static final Logger LOGGER = Logger.getLogger(PhoneHomeTask.class.getCanonicalName());
+    
+    @Inject
+    ServerEnvironment env;
     
     @Override
     public void run() {
         LOGGER.info("Phone Home");
+        
+        String version = getVersion();
+        String javaVersion = getJavaVersion();
+        String uptime = getUptime();
+        
+    }
+    
+    private String getVersion() {
+        return Version.getFullVersion();
+    }
+    
+    private String getJavaVersion() {
+        return System.getProperty("java.version");
+    }
+    
+    private String getUptime() {
+        
+        RuntimeMXBean mxbean = ManagementFactory.getRuntimeMXBean();
+        long totalTime_ms = -1;
+
+        if (mxbean != null)
+            totalTime_ms = mxbean.getUptime();
+
+        if (totalTime_ms <= 0) {
+            long start = env.getStartupContext().getCreationTime();
+            totalTime_ms = System.currentTimeMillis() - start;
+        }
+        return Long.toString(totalTime_ms);
+        
+    }
+    
+    private void sendGet() {
+        
+        try { 
+            URL url = new URL(PHONE_HOME_URL);
+            HttpsURLConnection conn = (HttpsURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setRequestProperty("User-Agent", USER_AGENT);
+            conn.getResponseCode();
+        }
+        catch (IOException ioe) {}
+    }
+    
+    static String encodeParams(Map<String,String> params) {
+        
+        StringBuilder sb = new StringBuilder();
+        char seperator;
+        seperator = '?';
+        for (Map.Entry<String,String> param : params.entrySet()) {
+            
+            try {
+                sb.append(String.format("%c%s=%s", seperator,
+                    URLEncoder.encode(param.getKey(), "UTF-8"),
+                    URLEncoder.encode(param.getValue(), "UTF-8")
+                ));
+                seperator='&';
+            } catch (UnsupportedEncodingException uee) {}                     
+        }
+        return sb.toString();
     }
 }

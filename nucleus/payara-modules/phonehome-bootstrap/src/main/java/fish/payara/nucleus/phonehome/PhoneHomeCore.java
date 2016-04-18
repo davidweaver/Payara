@@ -56,18 +56,28 @@ public class PhoneHomeCore implements EventListener {
     PhoneHomeRuntimeConfiguration configuration;
     
     @Inject
+    private ServerEnvironment env;
+    
+    @Inject
     private Events events;
     
     @PostConstruct
     public void postConstruct() {
         theCore = this;
         events.register(this);
-              
-        if (configuration == null) {
-            enabled = true;
+        
+        if (env.isDas()) {
+             
+            if (configuration == null) {
+                enabled = true;
+            } else {
+                enabled = Boolean.valueOf(configuration.getEnabled());
+            }
+            
         } else {
-            enabled = Boolean.valueOf(configuration.getEnabled());
+            enabled = false;
         }
+        
     }
     
     /**
