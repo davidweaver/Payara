@@ -42,6 +42,8 @@ public class PhoneHomeTask implements Runnable {
     //private static final String PHONE_HOME_URL = "https://phonehome.payara.fish/test";
     private static final String PHONE_HOME_URL = "https://localhost:8181/echo/echo";
     private static final String USER_AGENT = "Mozilla/5.0";
+    private static final int CONN_TIMEOUT_MS = 5000;
+    private static final int READ_TIMEOUT_MS = 5000;
     
     private static final Logger LOGGER = Logger.getLogger(PhoneHomeTask.class.getCanonicalName());
     
@@ -115,6 +117,8 @@ public class PhoneHomeTask implements Runnable {
             HttpsURLConnection conn = (HttpsURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
             conn.setRequestProperty("User-Agent", USER_AGENT);
+            conn.setConnectTimeout(CONN_TIMEOUT_MS);
+            conn.setReadTimeout(READ_TIMEOUT_MS);
             conn.getResponseCode();
         }
         catch (IOException ioe) {}
