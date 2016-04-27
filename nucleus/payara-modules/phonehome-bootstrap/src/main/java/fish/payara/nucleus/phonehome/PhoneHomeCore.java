@@ -19,6 +19,7 @@
  */
 package fish.payara.nucleus.phonehome;
 
+import com.sun.enterprise.config.serverbeans.Domain;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
@@ -61,6 +62,9 @@ public class PhoneHomeCore implements EventListener {
     @Inject
     private Events events;
     
+    @Inject
+    private Domain domain;
+    
     @PostConstruct
     public void postConstruct() {
         theCore = this;
@@ -76,8 +80,7 @@ public class PhoneHomeCore implements EventListener {
             
         } else {
             enabled = false;
-        }
-        
+        }        
     }
     
     /**
@@ -94,6 +97,7 @@ public class PhoneHomeCore implements EventListener {
     }
     
     private void bootstrapPhoneHome() {
+        
         if (enabled) {
             executor = Executors.newSingleThreadScheduledExecutor(new ThreadFactory() {
                 @Override
@@ -102,7 +106,7 @@ public class PhoneHomeCore implements EventListener {
                 }
             });
             //executor.scheduleAtFixedRate(new PhoneHomeTask(), 0, 1, TimeUnit.DAYS);
-            executor.scheduleAtFixedRate(new PhoneHomeTask(), 0, 5, TimeUnit.SECONDS);
+            executor.scheduleAtFixedRate(new PhoneHomeTask(domain, env), 0, 10, TimeUnit.SECONDS);
         }
     }
     
