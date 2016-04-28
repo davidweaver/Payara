@@ -21,24 +21,22 @@ package fish.payara.nucleus.phonehome;
 
 import com.sun.appserv.server.util.Version;
 import com.sun.enterprise.config.serverbeans.Domain;
+import com.sun.enterprise.config.serverbeans.Node;
+import com.sun.enterprise.config.serverbeans.Nodes;
+import com.sun.enterprise.config.serverbeans.Server;
+import com.sun.enterprise.config.serverbeans.Servers;
+import com.sun.enterprise.module.bootstrap.StartupContext;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
+import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
-import java.security.KeyManagementException;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
-import java.security.cert.X509Certificate;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
-import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSocketFactory;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 import org.glassfish.api.admin.ServerEnvironment;
 
 /**
@@ -47,14 +45,12 @@ import org.glassfish.api.admin.ServerEnvironment;
  */
 public class PhoneHomeTask implements Runnable {
     
-    //private static final String PHONE_HOME_URL = "https://localhost:8181/echo/echo";
-    private static final String PHONE_HOME_URL = "https://www.payara.fish/phonehome";
+    private static final String PHONE_HOME_URL = "http://www.payara.fish/phonehome";
     private static final String USER_AGENT = "Mozilla/5.0";
-    private static final int CONN_TIMEOUT = 5000;    // 5 seconds
-    private static final int READ_TIMEOUT = 5000;    // 5 seconds
+    private static final int CONN_TIMEOUT_MS = 5000;    // 5 seconds
+    private static final int READ_TIMEOUT_MS = 5000;    // 5 seconds
     
     private static final Logger LOGGER = Logger.getLogger(PhoneHomeTask.class.getCanonicalName());
-    
     
     ServerEnvironment env;
     Domain domain;
@@ -67,8 +63,6 @@ public class PhoneHomeTask implements Runnable {
     @Override
     public void run() {
         
-        LOGGER.info("Phone Home");
-        
         Map<String,String> params = new HashMap<>();
         params.put("ver", getVersion());
         params.put("jvm", getJavaVersion());
@@ -80,12 +74,21 @@ public class PhoneHomeTask implements Runnable {
         send(targetURL);
     }
     
-    private String getVersion() {
-        return Version.getFullVersion();
+    private String getVersion() {     
+        String ver = Version.getFullVersion();
+        if (ver == null) {
+            ver = "unknown";
+        }
+        return ver;
     }
     
     private String getJavaVersion() {
-        return System.getProperty("java.version");
+        
+        String ver = System.getProperty("java.version");
+        if (ver == null) {
+            ver = "unknown";
+        }
+        return ver;
     }
     
     private String getUptime() {
@@ -95,84 +98,67 @@ public class PhoneHomeTask implements Runnable {
         if (mxbean != null)
             totalTime_ms = mxbean.getUptime();
 
-        if (totalTime_ms <= 0) {
-            long start = env.getStartupContext().getCreationTime();
-            totalTime_ms = System.currentTimeMillis() - start;
+        if (totalTime_ms <= 0 && env != null) {
+            StartupContext ctx = env.getStartupContext();
+            if (ctx != null) {               
+                long start = ctx.getCreationTime();
+                totalTime_ms = System.currentTimeMillis() - start;
+            }
         }
         return Long.toString(totalTime_ms);
     }
     
-    private String getNodeCount(){
-        return Integer.toString(domain.getNodes().getNode().size());
+    private String getNodeCount(){      
+        String result = "unknown";
+        if (domain != null) {
+            Nodes nodes = domain.getNodes();
+            if (nodes != null) {
+                List<Node> nodelist = nodes.getNode();
+                if (nodelist != null) {
+                    result = Integer.toString(nodelist.size());
+                }
+            }
+        }
+        return result;
     }
     
     private String getServerCount(){
-        return Integer.toString(domain.getServers().getServer().size());
+        String result = "unknown";      
+        if (domain != null) {
+            List<Server> serverlist = domain.getServers().getServer();
+            if (serverlist != null) {
+                result = Integer.toString(serverlist.size());
+            }
+        }
+        return result;
     }
     
     private String encodeParams(Map<String,String> params) {
-        
         StringBuilder sb = new StringBuilder();
         char seperator;
         seperator = '?';
-        for (Map.Entry<String,String> param : params.entrySet()) {
-            
+        for (Map.Entry<String,String> param : params.entrySet()) {       
             try {
                 sb.append(String.format("%c%s=%s", seperator,
                     URLEncoder.encode(param.getKey(), "UTF-8"),
                     URLEncoder.encode(param.getValue(), "UTF-8")
                 ));
                 seperator='&';
-            } catch (UnsupportedEncodingException uee) {}                     
+            } catch (UnsupportedEncodingException uee) {/*Ignore*/}                     
         }
         return sb.toString();
     }
     
     private void send(String target) {
-        
         try {
             URL url = new URL(target);
-            HttpsURLConnection conn = (HttpsURLConnection) url.openConnection();
-            
-            SSLSocketFactory sslsf = getCertValidationDisabledSSLSocketFactory();
-            if (sslsf != null ) {
-                conn.setSSLSocketFactory(sslsf);
-            }            
-            System.out.println("PhoneHome UTLConnection = " + conn);
-            
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
             conn.setRequestProperty("User-Agent", USER_AGENT);
-            conn.setConnectTimeout(CONN_TIMEOUT);
-            conn.setReadTimeout(READ_TIMEOUT);
-            
-            int resCode = conn.getResponseCode();
-            System.out.println("PhoneHome Response Code = " + resCode);
+            conn.setConnectTimeout(CONN_TIMEOUT_MS);
+            conn.setReadTimeout(READ_TIMEOUT_MS);
+            conn.getResponseCode();
         }
-        catch (IOException ioe) {}
-    }
-    
-    private SSLSocketFactory getCertValidationDisabledSSLSocketFactory() {
-        
-        SSLSocketFactory sslsf = null;
-        
-        // Create a trust manager that does not validate certificate chains
-        TrustManager[] trustAllCerts;
-        trustAllCerts = new TrustManager[] { new X509TrustManager() {
-            @Override
-            public X509Certificate[] getAcceptedIssuers() { return null; }
-            @Override
-            public void checkClientTrusted(X509Certificate[] certs, String authType) {}
-            @Override
-            public void checkServerTrusted(X509Certificate[] certs, String authType) {}
-        }};
-        
-        try {
-            SSLContext sc = SSLContext.getInstance("TLS");  // Transport Layer Security protocol
-            sc.init(null, trustAllCerts, new SecureRandom());
-            sslsf = sc.getSocketFactory();
-        } catch (NoSuchAlgorithmException | KeyManagementException e) {}
-        
-        return sslsf;
-    }
-    
+        catch (IOException ioe) {/*Ignore*/}
+    }   
 }
